@@ -108,6 +108,8 @@ type Reader struct {
 	// How many bytes into the input reader we've read.  The value should not
 	// be considered valid after an error has occurred.
 	ByteOffset int64
+	// If set, a record is not considered complete without a trailing newline.
+	RequireTrailingNewline bool
 
 	line   int
 	column int
@@ -257,6 +259,13 @@ func (r *Reader) parseRecord() (fields []string, err error) {
 		haveField, delim, err := r.parseField()
 		if haveField {
 			r.fieldIndexes = append(r.fieldIndexes, idx)
+		}
+
+		if r.RequireTrailingNewline && err != nil && delim != '\n' {
+			if err == io.EOF {
+				err = fmt.Errorf("unexpected EOF")
+			}
+			return nil, err
 		}
 
 		if delim == '\n' || err == io.EOF {
